@@ -14,7 +14,7 @@ const orders: Order[] = [
 const subscriptions = new Map<number, string[]>();
 
 class Counter {
-  private orderNumber = -1;
+  private orderNumber = 0;
   next() {
     if (this.orderNumber < 300) {
       this.orderNumber++;
@@ -112,12 +112,15 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
                 );
                 continue;
               }
-              messages.push({
+              const message = {
                 to: token,
-                sound: 'default',
                 title: 'Din mat är klar 🍽️',
                 body: `Nu kan du gå och hämta beställning #${body.id}`,
-              });
+              };
+
+              console.log('Sending notification with message', message);
+
+              messages.push(message);
             }
             if (messages.length > 0) {
               expo.chunkPushNotifications(messages);
@@ -160,6 +163,11 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         } else {
           subscriptions.set(body.id, [body.token]);
         }
+        console.log(
+          `In the map, the array with id ${
+            body.id
+          } now contains ${subscriptions.get(body.id)}`
+        );
         return {
           message: `Successfully subscribed to order #${body.id} with token ${body.token}`,
         };
