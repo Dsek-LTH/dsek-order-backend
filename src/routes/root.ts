@@ -109,25 +109,32 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
               `Order #${body.id} is marked as done, attempting to send push notifications to: `,
               tokens
             );
-            tokens.forEach((token) => {
+            for (const token of tokens) {
               if (!Expo.isExpoPushToken(token)) {
                 console.error(
                   `Push token ${token} is not a valid Expo push token`
                 );
-              } else {
-                const message = {
-                  to: token,
-                  title: 'Din mat är klar 🍽️',
-                  body: `Nu kan du gå och hämta beställning #${body.id}`,
-                };
-
-                console.log('Sending notification with message', message);
-
-                messages.push(message);
+                continue;
               }
-            });
+              const message = {
+                to: token,
+                title: 'Din mat är klar 🍽️',
+                body: `Nu kan du gå och hämta beställning #${body.id}`,
+              };
+              messages.push(message);
+            }
             if (messages.length > 0) {
-              expo.chunkPushNotifications(messages);
+              const chunks = expo.chunkPushNotifications(messages);
+              for (const chunk of chunks) {
+                try {
+                  const ticketChunk = await expo.sendPushNotificationsAsync(
+                    chunk
+                  );
+                  console.log(ticketChunk);
+                } catch (error) {
+                  console.error(error);
+                }
+              }
             }
             subscriptions.delete(body.id);
           }
