@@ -9,7 +9,7 @@
   "scripts": {
     "test": "npm run build:ts && tsc -p test/tsconfig.json && tap --ts test/**/*.test.ts",
     "start": "npm run build:ts && fastify start -p 3001 -l info dist/app.js",
-    "build:ts": "tsc",
+    "build": "tsc",
     "dev": "tsc && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"tsc -w\" \"fastify start -p 3001 --ignore-watch=.ts$ -w -l info -P dist/app.js\""
   },
   "keywords": [],
