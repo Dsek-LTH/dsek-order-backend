@@ -105,6 +105,10 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           const tokens = subscriptions.get(body.id);
           if (tokens) {
             const messages: ExpoPushMessage[] = [];
+            console.log(
+              `Order #${body.id} is marked as done, sending push notifications to: `,
+              subscriptions.get(body.id)
+            );
             for (const token in tokens) {
               if (!Expo.isExpoPushToken(token)) {
                 console.error(
