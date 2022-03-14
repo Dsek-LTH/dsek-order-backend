@@ -146,7 +146,7 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  fastify.put(
+  fastify.post(
     '/order/subscribe',
     {
       schema: {
@@ -185,6 +185,35 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       } else {
         return reply.badRequest(`${body.token} is not a valid expo token`);
       }
+    }
+  );
+
+  fastify.delete(
+    '/order',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: {
+              type: 'number',
+            },
+          },
+        },
+      },
+    },
+    async function (request, reply) {
+      if (await userIsAdmin(request.headers)) {
+        const body = request.body as { id: number };
+        const orderToDelete = orders.find((order) => order.id === body.id);
+        if (orderToDelete) {
+          orders.splice(orders.indexOf(orderToDelete), 1);
+          return orderToDelete;
+        }
+        return reply.badRequest(`There is no order with the id ${body.id}`);
+      }
+      return reply.forbidden();
     }
   );
 };
