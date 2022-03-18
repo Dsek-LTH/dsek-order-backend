@@ -7,6 +7,19 @@ import fastifyCors from 'fastify-cors';
 
 const expo = new Expo();
 
+const menu: MenuItem[] = [
+  {
+    name: 'dboll',
+    imageUrl:
+      'https://varsego.se/storage/9CF65AC82138E32E661B64BD2862BFD04CAE48425DA05EA661F8026F32098D57/36f14f37e20d4263b0c3f7836953f22c/png/media/0e8300047b1d47d284a8e58281dea950/12947%20Delicatoboll%2050p.png',
+  },
+  {
+    name: 'lasagne',
+    imageUrl:
+      'https://crockpot.se/wp-content/uploads/2020/02/Lasange_hem-640x480.jpg',
+  },
+];
+
 const orders: Order[] = [
   { id: 0, orders: ['hej', 'felix', 'ketchup'], isDone: false },
 ];
@@ -49,6 +62,81 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get('/orders', async function (request, reply) {
     return orders;
   });
+
+  fastify.get('/menu', async function (request, reply) {
+    return menu;
+  });
+
+  fastify.post(
+    '/menuItem',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: {
+              type: 'string',
+            },
+            imageUrl: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+    async function (request, reply) {
+      if (await userIsAdmin(request.headers)) {
+        const body = request.body as { name: string; imageUrl?: string };
+        const names = menu.map((menuItem) => menuItem.name);
+        if (names.includes(body.name)) {
+          return reply.badRequest(
+            `There is already a menu item with the name: ${body.name}`
+          );
+        } else {
+          const menuItem: MenuItem = {
+            name: body.name,
+            imageUrl: body.imageUrl ?? '',
+          };
+          menu.push(menuItem);
+          return menuItem;
+        }
+      }
+      return reply.forbidden();
+    }
+  );
+
+  fastify.delete(
+    '/menuItem',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name', 'imageUrl'],
+          properties: {
+            name: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+    async function (request, reply) {
+      if (await userIsAdmin(request.headers)) {
+        const body = request.body as { name: string };
+        const menuItem = menu.find((menuItem) => menuItem.name === body.name);
+        if (menuItem) {
+          menu.splice(menu.indexOf(menuItem), 1);
+          return menuItem;
+        } else {
+          return reply.badRequest(
+            `There is no menu item with the name: ${body.name}`
+          );
+        }
+      }
+      return reply.forbidden();
+    }
+  );
 
   fastify.post(
     '/order',

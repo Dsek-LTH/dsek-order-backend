@@ -71,3 +71,8 @@ type Order = {
   orders: string[];
   isDone: boolean;
 };
+
+type MenuItem = {
+  name: string;
+  imageUrl: string;
+};
