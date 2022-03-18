@@ -24,7 +24,9 @@ const orders: Order[] = [
   { id: 0, orders: ['hej', 'felix', 'ketchup'], isDone: false },
 ];
 
-const subscriptions = new Map<number, string[]>();
+const history: Order[] = [];
+
+const subscriptions = new Map<number, Set<string>>();
 
 class Counter {
   private orderNumber = 0;
@@ -65,6 +67,9 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
   fastify.get('/menu', async function (request, reply) {
     return menu;
+  });
+  fastify.get('/history', async function (request, reply) { //en historik
+    return history;
   });
 
   fastify.post(
@@ -257,21 +262,59 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (Expo.isExpoPushToken(body.token)) {
         const tokens = subscriptions.get(body.id);
         if (tokens) {
-          tokens.push(body.token);
+          tokens.add(body.token);
           subscriptions.set(body.id, tokens);
         } else {
-          subscriptions.set(body.id, [body.token]);
+          subscriptions.set(body.id, new Set([body.token]));
         }
         console.log(
-          `In the map, the array with id ${
-            body.id
-          } now contains ${subscriptions.get(body.id)}`
+          `In the map, the array with id ${body.id
+          } now contains ${Array.from(subscriptions.get(body.id) || [])}`
         );
         return {
           message: `Successfully subscribed to order #${body.id} with token ${body.token}`,
         };
       } else {
         return reply.badRequest(`${body.token} is not a valid expo token`);
+      }
+    }
+  );
+
+  fastify.post(
+    '/order/unsubscribe',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['id', 'token'],
+          properties: {
+            id: {
+              type: 'number',
+            },
+            token: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+    async function (request, reply) {
+      const body = request.body as { id: number; token: string };
+      const tokens = subscriptions.get(body.id);
+      if (tokens) {
+        if (tokens.delete(body.token)) {
+          console.log(
+            `In the map, the array with id ${body.id
+            } now contains ${Array.from(subscriptions.get(body.id) || [])}`
+          );
+          return { message: `Successfully removed token ${body.token}` }
+        }
+        else {
+          return reply.badRequest(`${Array.from(tokens)} does not contain ${body.token}`);
+        }
+      }
+      else {
+        return reply.badRequest(`${body.id} does not have any tokens`);
       }
     }
   );
@@ -297,6 +340,7 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         const orderToDelete = orders.find((order) => order.id === body.id);
         if (orderToDelete) {
           orders.splice(orders.indexOf(orderToDelete), 1);
+          history.push(orderToDelete);
           return orderToDelete;
         }
         return reply.badRequest(`There is no order with the id ${body.id}`);
