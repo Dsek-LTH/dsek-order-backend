@@ -38,6 +38,10 @@ class Counter {
     }
     return this.orderNumber;
   }
+
+  resetFrom(from: number) {
+    this.orderNumber = from - 1;
+  }
 }
 
 const counter = new Counter();
@@ -45,6 +49,47 @@ const counter = new Counter();
 const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.register(fastifyCors, {
     origin: '*',
+  });
+
+  fastify.register(require('fastify-swagger'), {
+    routePrefix: '/documentation',
+    swagger: {
+      info: {
+        title: 'Dsek order API',
+        description: 'Backend for our internal order system',
+        version: '0.1.0',
+      },
+      externalDocs: {
+        url: 'https://swagger.io',
+        description: 'Find more info here',
+      },
+      host: 'localhost',
+      schemes: ['http'],
+      consumes: ['application/json'],
+      produces: ['application/json'],
+      securityDefinitions: {
+        apiKey: {
+          type: 'apiKey',
+          name: 'apiKey',
+          in: 'header',
+        },
+      },
+    },
+    uiConfig: {
+      docExpansion: 'full',
+      deepLinking: false,
+    },
+    /*     uiHooks: {
+      onRequest: function (request, reply, next) {
+        next();
+      },
+      preHandler: function (request, reply, next) {
+        next();
+      },
+    },
+    transformStaticCSP: (header) => header, */
+    staticCSP: true,
+    exposeRoute: true,
   });
 
   fastify.addContentTypeParser(
@@ -68,7 +113,8 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get('/menu', async function (request, reply) {
     return menu;
   });
-  fastify.get('/history', async function (request, reply) { //en historik
+  fastify.get('/history', async function (request, reply) {
+    //en historik
     return history;
   });
 
@@ -155,13 +201,19 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
               type: 'array',
               items: { type: 'string' },
             },
+            id: {
+              type: 'number',
+            },
           },
         },
       },
     },
     async function (request, reply) {
       if (await userIsAdmin(request.headers)) {
-        const body = request.body as { orders: string[] };
+        const body = request.body as { orders: string[]; id?: number };
+        if (body.id !== undefined) {
+          counter.resetFrom(body.id);
+        }
         const newOrder: Order = {
           id: counter.next(),
           orders: body.orders,
@@ -268,8 +320,9 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           subscriptions.set(body.id, new Set([body.token]));
         }
         console.log(
-          `In the map, the array with id ${body.id
-          } now contains ${Array.from(subscriptions.get(body.id) || [])}`
+          `In the map, the array with id ${body.id} now contains ${Array.from(
+            subscriptions.get(body.id) || []
+          )}`
         );
         return {
           message: `Successfully subscribed to order #${body.id} with token ${body.token}`,
@@ -304,16 +357,17 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (tokens) {
         if (tokens.delete(body.token)) {
           console.log(
-            `In the map, the array with id ${body.id
-            } now contains ${Array.from(subscriptions.get(body.id) || [])}`
+            `In the map, the array with id ${body.id} now contains ${Array.from(
+              subscriptions.get(body.id) || []
+            )}`
           );
-          return { message: `Successfully removed token ${body.token}` }
+          return { message: `Successfully removed token ${body.token}` };
+        } else {
+          return reply.badRequest(
+            `${Array.from(tokens)} does not contain ${body.token}`
+          );
         }
-        else {
-          return reply.badRequest(`${Array.from(tokens)} does not contain ${body.token}`);
-        }
-      }
-      else {
+      } else {
         return reply.badRequest(`${body.id} does not have any tokens`);
       }
     }
