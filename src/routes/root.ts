@@ -2,8 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { userIsAdmin } from '../utils';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import fastifyCors from 'fastify-cors';
-
-//import { getUser, userIsAdmin } from '../utils';
+const helmet = require('fastify-helmet');
 
 const expo = new Expo();
 
@@ -47,6 +46,21 @@ class Counter {
 const counter = new Counter();
 
 const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  fastify.register(helmet, (instance) => {
+    return {
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'form-action': ["'self'"],
+          'img-src': ["'self'", 'data:', 'validator.swagger.io'],
+          //@ts-ignore
+          //'script-src': ["'self'"].concat(instance.swaggerCSP.script),
+          //@ts-ignore
+          //'style-src': ["'self'", 'https:'].concat(instance.swaggerCSP.style),
+        },
+      },
+    };
+  });
   fastify.register(fastifyCors, {
     origin: '*',
   });
@@ -59,12 +73,8 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         description: 'Backend for our internal order system',
         version: '0.1.0',
       },
-      externalDocs: {
-        url: 'https://swagger.io',
-        description: 'Find more info here',
-      },
-      host: 'localhost',
-      schemes: ['http'],
+      host: 'dsek-order-app.herokuapp.com',
+      schemes: ['https'],
       consumes: ['application/json'],
       produces: ['application/json'],
       securityDefinitions: {
